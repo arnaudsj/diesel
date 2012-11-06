@@ -8,6 +8,8 @@ from diesel.protocols.websockets import WebSocketDisconnect
 from diesel.util.queue import Fanout
 from diesel.protocols.redis import RedisSubHub, RedisClient
 from simplejson import dumps, loads, JSONDecodeError
+from diesel.util.pool import ConnectionPool
+
 
 content = '''
 <html>
@@ -94,6 +96,7 @@ app = DieselFlask(__name__)
 #hub = RedisSubHub(host="carp.redistogo.com", port=9245, password="79fe5cf7d152e96255f0b730337efb67")
 #hub = RedisSubHub(host="grouper.redistogo.com", port=9125, password="f25f47d53aac69e13b5d344c9477e246")
 hub =  RedisSubHub("localhost")
+redis_pool = ConnectionPool(lambda: RedisClient("localhost"), lambda c: c.close(), pool_size=1, pool_max=5)
 
 @app.route("/")
 def web_handler():
@@ -102,7 +105,6 @@ def web_handler():
 @app.route("/ws")
 @app.websocket
 def pubsub_socket(req, inq, outq):
-    c = hub.make_client()
     print "forking websocket"
     with hub.subq("*") as group:
         while True:
@@ -115,10 +117,11 @@ def pubsub_socket(req, inq, outq):
                 cmd = v.get("cmd", "")
                 chan = v.get("channel", "default")
                 if cmd=="":
-                    print "published message to %i subscribers" % c.publish(chan, dumps({
-                    'nick' : cgi.escape(v['nick'].strip()),
-                    'message' : cgi.escape(v['message'].strip()),
-                    }))
+                    with redis_pool.connection as c:
+                        print "published message to %i subscribers" % c.publish(chan, dumps({
+                        'nick' : cgi.escape(v['nick'].strip()),
+                        'message' : cgi.escape(v['message'].strip()),
+                        }))
                 else:
                     outq.put(dict(message="test bot"))
             elif q == group: # getting message for broadcasting
