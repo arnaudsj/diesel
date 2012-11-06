@@ -927,7 +927,7 @@ class RedisSubHub(object):
         client = RedisClient(self.host, self.port, self.password)
         if self.password != None:
             client.auth()
-        return  client
+        return client
 
     def __isglob(self, glob):
         return '*' in glob or '?' in glob or ('[' in glob and ']' and glob)

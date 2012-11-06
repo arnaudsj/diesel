@@ -25,16 +25,22 @@ class ConnectionPool(object):
         self.init_callable = init_callable
         self.close_callable = close_callable
         self.pool_size = pool_size
+        self.pool_max = pool_max
         self.poll_max_timeout = poll_max_timeout
         if pool_max:
+            self.initialized = False
             self.remaining_conns = Queue()
-            for _ in xrange(pool_max):
-                self.remaining_conns.put()
         else:
+            self.initialized = True
             self.remaining_conns = InfiniteQueue()
         self.connections = deque()
 
     def get(self):
+        if self.initialized == False and self.pool_max != None:
+            for _ in xrange(self.pool_max):
+                self.remaining_conns.put()
+            self.initialized = True
+
         try:
             self.remaining_conns.get(timeout=self.poll_max_timeout)
         except QueueTimeout:
