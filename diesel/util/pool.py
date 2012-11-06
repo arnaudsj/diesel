@@ -66,6 +66,10 @@ class ConnectionPool(object):
 
     @property
     def connection(self):
+        if self.initialized == False and self.pool_max != None:
+            for _ in xrange(self.pool_max):
+                self.remaining_conns.put()
+            self.initialized = True
         return ConnContextWrapper(self, self.get())
 
 class ConnContextWrapper(object):
