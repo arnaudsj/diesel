@@ -97,9 +97,10 @@ class WebSocketServer(HttpServer):
             #raise ConnectionClosed("remote disconnected")
 
     def handle_rfc_6455_frames(self, inq, outq):
+        disconnecting = False
         while True:
             typ, val = first(receive=2, waits=[outq])
-            if typ == 'receive':
+            if typ == 'receive' and disconnecting == False:
                 b1, b2 = unpack(">BB", val)
 
                 opcode = b1 & 0x0f
@@ -110,6 +111,7 @@ class WebSocketServer(HttpServer):
 
                 if opcode == 8:
                     inq.put(WebSocketDisconnect())
+                    disconnecting = True
                 else:
                     assert opcode == 1, "Currently only opcode 1 is supported (opcode=%s)" % opcode
                     length = b2 & 0x7f

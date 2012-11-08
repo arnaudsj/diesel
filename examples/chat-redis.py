@@ -110,6 +110,8 @@ def pubsub_socket(req, inq, outq):
         while True:
             q, v = first(waits=[inq, group])
             if isinstance(v, WebSocketDisconnect):
+                print "client sent disconnection frame, disconnecting"
+                outq.put(WebSocketDisconnect())
                 return
             elif q == inq: # getting message from client
                 print "(inq) %s" % v
